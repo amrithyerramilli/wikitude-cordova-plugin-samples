@@ -3,43 +3,62 @@
 */
 IrAndGeo = {};
 
-IrAndGeo.markerNames = ['Union Circle', 'Eastminster', 'Small Ben', 'Silver Gate', 'Uptown', 'Downtown', 'Countryside', 'Outer Circle'];
+IrAndGeo.markerNames = [
+    'Union Circle',
+    'Eastminster',
+    'Small Ben',
+    'Silver Gate',
+    'Uptown',
+    'Downtown',
+    'Countryside',
+    'Outer Circle'
+];
 IrAndGeo.stores = [];
 IrAndGeo.markerAnimations = [];
 IrAndGeo.error = false;
 IrAndGeo.receivedLocation = false;
+IrAndGeo.resourcesLoaded = false;
 
 IrAndGeo.res = {};
 
 IrAndGeo.setupScene = function(lat, lon, alt) {
-    // create 8 random markers with different marker names
+    /* Create 8 random markers with different marker names. */
     for (var i = 0; i < 8; i++) {
         var objLat = lat + ((Math.random() - 0.5) / 1000);
         var objLon = lon + ((Math.random() - 0.5) / 1000);
         IrAndGeo.createMarker(objLat, objLon, IrAndGeo.markerNames[i]);
     }
 
-    // create appearing animation
+    /* Create appearing animation. */
     IrAndGeo.showMarkersAnimation = new AR.AnimationGroup('parallel', IrAndGeo.markerAnimations);
 };
 
 IrAndGeo.createMarker = function(lat, lon, name) {
-    // create an AR.GeoLocation from the latitude/longitude function parameters
+    /* Create an AR.GeoLocation from the latitude/longitude function parameters. */
     var loc = new AR.GeoLocation(lat, lon);
 
-    // create an AR.ImageDrawable for the marker
+    /* Create an AR.ImageDrawable for the marker. */
     var imageDrawable = new AR.ImageDrawable(IrAndGeo.res.marker, 2, {
-        scale: 0.0,
+        scale: {
+            x: 0.0,
+            y: 0.0
+        },
         onClick: function() {
             alert("clicked");
         }
     });
 
-    // create marker animations and store it in the markerAnimations-array 
-    IrAndGeo.markerAnimations.push(new AR.PropertyAnimation(imageDrawable, 'scale', 0.0, 1.0, 1000, {
+    /* Create marker animations and store it in the markerAnimations-array. */
+    IrAndGeo.markerAnimations.push(new AR.PropertyAnimation(imageDrawable, 'scale.x', 0.0, 1.0, 1000, {
         type: AR.CONST.EASING_CURVE_TYPE.EASE_OUT_BOUNCE
     }));
-    // create a AR.GeoObject with the marker, disable it by setting the enabled-flag to 'false' and store it in the stores-array
+    IrAndGeo.markerAnimations.push(new AR.PropertyAnimation(imageDrawable, 'scale.y', 0.0, 1.0, 1000, {
+        type: AR.CONST.EASING_CURVE_TYPE.EASE_OUT_BOUNCE
+    }));
+    /*
+        Create a AR.GeoObject with the marker, disable it by setting the enabled-flag to 'false' and store it in the
+        stores-array.
+      */
     IrAndGeo.stores.push(new AR.GeoObject(loc, {
         drawables: {
             cam: imageDrawable
@@ -49,26 +68,27 @@ IrAndGeo.createMarker = function(lat, lon, name) {
 };
 
 IrAndGeo.showStores = function() {
-    // display all GeoObjects by setting the enabled-flag to 'true'
+    /* Display all GeoObjects by setting the enabled-flag to 'true' */
     IrAndGeo.stores.forEach(function(x, idx) {
         x.enabled = true;
     });
 
-    // nicely animate appearing of markers
+    /* Nicely animate appearing of markers */
     IrAndGeo.showMarkersAnimation.start();
 
-    // set the info-text for the HTML message element and show it
+    /* Set the info-text for the HTML message element and show it */
     document.getElementById("messageElement").innerHTML = "Look around for stores nearby!";
     document.getElementById("messageElement").style.display = "block";
+    document.getElementById("infoBox").style.display = "none";
 };
 
 IrAndGeo.hideStores = function() {
-    // disable all GeoObjects and reset to 0 size
+    /* Disable all GeoObjects and reset to 0 size */
     IrAndGeo.stores.forEach(function(obj, idx) {
         obj.enabled = false;
         obj.drawables.cam[0].scale = 0.0;
     });
-    // hide the HTML message element
+    /* Hide the HTML message element */
     document.getElementById("messageElement").style.display = "none";
 };
 
@@ -90,54 +110,68 @@ IrAndGeo.hideDeal = function() {
 IrAndGeo.showWeb = function() {
     IrAndGeo.hideStores();
 
-    AR.context.openInBrowser("http://www.wikitude.com");
+    AR.context.openInBrowser("https://www.wikitude.com");
 };
 
 IrAndGeo.loadingStepDone = function() {
-    if (!IrAndGeo.error && IrAndGeo.res.buttonStores.isLoaded() && IrAndGeo.res.buttonWeb.isLoaded() && IrAndGeo.res.buttonDeal.isLoaded() && IrAndGeo.res.marker.isLoaded() && IrAndGeo.receivedLocation && IrAndGeo.tracker && IrAndGeo.tracker.isLoaded()) {
-        //everything is loaded
-        var cssDivLeft = " style='display: table-cell;vertical-align: middle; text-align: right; width: 50%; padding-right: 15px;'";
-        var cssDivRight = " style='display: table-cell;vertical-align: middle; text-align: left;'";
-        document.getElementById('messageElement').innerHTML =
-            "<div" + cssDivLeft + ">Scan Shop Image Target:</div>" +
-            "<div" + cssDivRight + "><img src='assets/ShopAdSmall.png'></img></div>";
+    var augmentationsLoaded = IrAndGeo.res.buttonStores.isLoaded() &&
+        IrAndGeo.res.buttonWeb.isLoaded() &&
+        IrAndGeo.res.buttonDeal.isLoaded() &&
+        IrAndGeo.res.marker.isLoaded();
 
-        // Remove Scan target message after 10 sec.
-        setTimeout(function() {
-            document.getElementById("messageElement").style.display = "none";
-        }, 10000);
+    if (!IrAndGeo.error &&
+        augmentationsLoaded &&
+        IrAndGeo.receivedLocation &&
+        IrAndGeo.tracker &&
+        IrAndGeo.resourcesLoaded) {
+
+        document.getElementById("infoBox").style.display = "table";
+        document.getElementById("messageElement").style.display = "none";
     }
 };
 
-// function for displaying a loading error in the HTML message element
-IrAndGeo.errorLoading = function() {
-    document.getElementById("messageElement").innerHTML = "Unable to load image or tracker!";
+/* Function for displaying a loading error in the HTML message element. */
+IrAndGeo.errorLoading = function(error) {
+    alert(error);
     IrAndGeo.error = true;
 };
 
 IrAndGeo.initIr = function() {
-    // Create the tracker to recognize the shop ad
-    var trackerDataSetPath = "assets/ShopAd.wtc";
-    IrAndGeo.tracker = new AR.ClientTracker(trackerDataSetPath, {
-        onLoaded: IrAndGeo.loadingStepDone,
+
+    this.targetCollectionResource = new AR.TargetCollectionResource("assets/ShopAd.wtc", {
+        onLoaded: function() {
+            IrAndGeo.resourcesLoaded = true;
+            IrAndGeo.loadingStepDone();
+        },
         onError: IrAndGeo.errorLoading
     });
 
-    // Create drawables to display on the recognized image
+    this.tracker = new AR.ImageTracker(this.targetCollectionResource, {
+        onTargetsLoaded: IrAndGeo.loadingStepDone,
+        onError: IrAndGeo.errorLoading
+    });
+
+    /* Create drawables to display on the recognized image. */
     var buttonDeal = new AR.ImageDrawable(IrAndGeo.res.buttonDeal, 0.15, {
         onClick: IrAndGeo.showDeal,
-        offsetX: 0.35,
-        offsetY: -0.275
+        translate: {
+            x: 0.35,
+            y: -0.275
+        }
     });
     var buttonWeb = new AR.ImageDrawable(IrAndGeo.res.buttonWeb, 0.15, {
         onClick: IrAndGeo.showWeb,
-        offsetX: 0.175,
-        offsetY: -0.525
+        translate: {
+            x: 0.175,
+            y: -0.525
+        }
     });
     var buttonStores = new AR.ImageDrawable(IrAndGeo.res.buttonStores, 0.15, {
         onClick: IrAndGeo.showStores,
-        offsetX: -0.1,
-        offsetY: -0.275
+        translate: {
+            x: -0.1,
+            y: -0.275
+        }
     });
 
     IrAndGeo.menuDrawables = [buttonDeal, buttonWeb, buttonStores];
@@ -146,27 +180,28 @@ IrAndGeo.initIr = function() {
         onClick: IrAndGeo.hideDeal
     });
 
-    // Create the object by defining the tracker, target name and its drawables
-    var trackable2DObject = new AR.Trackable2DObject(IrAndGeo.tracker, "ShopAd", {
+    /* Create the object by defining the tracker, target name and its drawables. */
+    this.imageTrackable = new AR.ImageTrackable(IrAndGeo.tracker, "ShopAd", {
         drawables: {
             cam: [buttonDeal, buttonWeb, buttonStores, IrAndGeo.dealDrawable]
-        }
+        },
+        onError: IrAndGeo.errorLoading
     });
 
 };
 
-// this function is called as soon as we receive GPS data 
+/* This function is called as soon as we receive GPS data. */
 AR.context.onLocationChanged = function(latitude, longitude, altitude, accuracy) {
-    // in order not to receive any further location updates the onLocationChanged trigger is set to null
+    /* In order not to receive any further location updates the onLocationChanged trigger is set to null. */
     AR.context.onLocationChanged = null;
-    // flag to store that a location was received
+    /* Flag to store that a location was received. */
     IrAndGeo.receivedLocation = true;
-    // initialize the scene
+    /* Initialize the scene. */
     IrAndGeo.setupScene(latitude, longitude, altitude);
     IrAndGeo.loadingStepDone();
 };
 
-// Create the image resources that are used for the marker and the buttons
+/* Create the image resources that are used for the marker and the buttons. */
 IrAndGeo.res.marker = new AR.ImageResource("assets/YourShop_Marker.png", {
     onLoaded: IrAndGeo.loadingStepDone,
     onError: IrAndGeo.errorLoading
